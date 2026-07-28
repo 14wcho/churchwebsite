@@ -11,11 +11,14 @@ interface SearchItem {
   video: VideoRecord;
 }
 
+const PAGE_SIZE = 50;
+
 export default function Home() {
   const [items, setItems] = useState<SearchItem[]>([]);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [playingSegmentId, setPlayingSegmentId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     (async () => {
@@ -55,6 +58,13 @@ export default function Home() {
         .sort((a, b) => (a.video.publishedAt ?? "").localeCompare(b.video.publishedAt ?? ""))
         .reverse();
 
+  useEffect(() => {
+    setPage(1);
+  }, [query]);
+
+  const totalPages = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
+  const pagedResults = results.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
       <div className="mb-8 flex items-center justify-between">
@@ -84,8 +94,12 @@ export default function Home() {
           {query ? "검색 결과가 없습니다." : "아직 등록된 찬양 구간이 없습니다. 관리자 페이지에서 추가하세요."}
         </p>
       ) : (
+        <>
+        <p className="mb-3 text-sm text-zinc-500">
+          {results.length}개 중 {(page - 1) * PAGE_SIZE + 1}-{Math.min(page * PAGE_SIZE, results.length)}
+        </p>
         <ul className="space-y-3">
-          {results.map(({ segment, video }) => {
+          {pagedResults.map(({ segment, video }) => {
             const isPlaying = playingSegmentId === segment.id;
             const thumb = video.thumbnailUrl && (
               // eslint-disable-next-line @next/next/no-img-element
@@ -145,6 +159,28 @@ export default function Home() {
             );
           })}
         </ul>
+        {totalPages > 1 && (
+          <div className="mt-6 flex items-center justify-center gap-4 text-sm">
+            <button
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="rounded border border-zinc-300 px-3 py-1 disabled:opacity-40"
+            >
+              이전
+            </button>
+            <span className="text-zinc-500">
+              {page} / {totalPages}
+            </span>
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page === totalPages}
+              className="rounded border border-zinc-300 px-3 py-1 disabled:opacity-40"
+            >
+              다음
+            </button>
+          </div>
+        )}
+        </>
       )}
     </main>
   );

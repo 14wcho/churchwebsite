@@ -4,10 +4,13 @@ import { useEffect, useState } from "react";
 import type { Segment, VideoRecord } from "@/lib/db";
 import { secondsToTimestamp } from "@/lib/youtube";
 
+const PAGE_SIZE = 50;
+
 export default function AdminPage() {
   const [segments, setSegments] = useState<Segment[]>([]);
   const [videos, setVideos] = useState<VideoRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
 
   const [source, setSource] = useState<"youtube" | "local">("youtube");
   const [videoUrl, setVideoUrl] = useState("");
@@ -130,6 +133,9 @@ export default function AdminPage() {
     const vb = videoById.get(b.videoId)?.title ?? "";
     return va === vb ? a.timestampSec - b.timestampSec : va.localeCompare(vb);
   });
+  const totalPages = Math.max(1, Math.ceil(sortedSegments.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pagedSegments = sortedSegments.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
@@ -241,7 +247,7 @@ export default function AdminPage() {
         <p className="text-zinc-500">불러오는 중...</p>
       ) : (
         <ul className="space-y-2">
-          {sortedSegments.map((s) => {
+          {pagedSegments.map((s) => {
             const video = videoById.get(s.videoId);
             const isEditing = editing?.id === s.id;
             return (
@@ -323,6 +329,27 @@ export default function AdminPage() {
             );
           })}
         </ul>
+      )}
+      {!loading && totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-center gap-4 text-sm">
+          <button
+            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="rounded border border-zinc-300 px-3 py-1 disabled:opacity-40"
+          >
+            이전
+          </button>
+          <span className="text-zinc-500">
+            {currentPage} / {totalPages}
+          </span>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="rounded border border-zinc-300 px-3 py-1 disabled:opacity-40"
+          >
+            다음
+          </button>
+        </div>
       )}
     </main>
   );
