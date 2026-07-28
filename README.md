@@ -26,6 +26,27 @@ npm run dev
 - `/admin` — 구간 수동 추가/수정/삭제, 채널 동기화, 로컬 영상 관리
 - `/transpose` — 악보 코드 키 변환
 
+## 배포해서 다른 사람도 링크로 쓰게 하기
+
+로컬 실행은 개발자용이라, 교인들에게 그냥 링크 하나만 주려면 실제 배포가 필요함. 완전 무료(Vercel Hobby + Upstash 무료 티어)로 가능.
+
+1. **Upstash 무료 Redis 만들기**: [upstash.com](https://upstash.com) → GitHub으로 로그인 → Redis 데이터베이스 생성(무료 티어) → REST URL/TOKEN 복사
+2. **Vercel에 배포**:
+   ```bash
+   npx vercel login       # 브라우저에서 GitHub 계정으로 로그인
+   npx vercel link        # 프로젝트 연결 (이름 = 배포 URL의 서브도메인이 됨, 직접 정할 수 있음)
+   npx vercel env add YOUTUBE_API_KEY
+   npx vercel env add ADMIN_PASSWORD
+   npx vercel env add UPSTASH_REDIS_REST_URL
+   npx vercel env add UPSTASH_REDIS_REST_TOKEN
+   npx vercel --prod
+   ```
+3. 배포 끝나면 `https://<정한이름>.vercel.app` 링크가 나오는데, 이걸 그대로 다른 교인들한테 주면 됨 (검색만 하는 용도는 로그인 불필요)
+4. `/admin`은 3번에서 정한 `ADMIN_PASSWORD`를 입력해야 들어갈 수 있음 (동기화/구간 관리는 본인만)
+5. 이후 GitHub에 push하면 Vercel이 자동으로 재배포함 (Vercel 대시보드에서 이 프로젝트가 GitHub 저장소랑 연결되어 있어야 함 — `vercel link`가 자동으로 해줌)
+
+배포본에서는 "로컬 영상" 기능이 원래 의미대로 동작하지 않음 (클라우드 서버에는 이 컴퓨터의 영상 파일이 없어서) — 이건 로컬 실행 전용 기능으로 남겨둠.
+
 ## 기능별 상태 (4단계 모두 구현+테스트 완료)
 
 | 단계 | 내용 | 상태 |
@@ -51,6 +72,7 @@ npm run dev
 app/
   page.tsx              검색 페이지
   admin/page.tsx         관리자
+  admin/login/page.tsx    관리자 비밀번호 로그인
   transpose/page.tsx     악보 코드 변환
   api/
     segments/            구간 CRUD
@@ -58,11 +80,13 @@ app/
     sync/                 유튜브 채널 동기화
     local-videos/         로컬 영상 스캔 + 스트리밍
     ocr/                  악보 이미지 OCR
+    admin-login/          관리자 비밀번호 검증 + 쿠키 발급
+middleware.ts            /admin, 데이터 변경 API에 비밀번호 게이트 (ADMIN_PASSWORD 없으면 미적용)
 lib/
-  db.ts                  data/db.json 읽기/쓰기
+  db.ts                  DB 읽기/쓰기 (로컬은 data/db.json 파일, 배포본은 Upstash Redis)
   youtube.ts              유튜브 URL 파싱, Data API 호출, 타임스탬프 파싱
   chord.ts                코드 파싱 + 반음 이동
   localVideos.ts           로컬 영상 폴더 스캔
-data/db.json              전체 데이터 (channels, videos, segments)
-local-videos/              로컬 영상 파일 넣는 곳
+data/db.json              전체 데이터 (channels, videos, segments) — 로컬 전용
+local-videos/              로컬 영상 파일 넣는 곳 — 로컬 전용
 ```

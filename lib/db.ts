@@ -36,6 +36,14 @@ export interface DB {
 
 const EMPTY_DB: DB = { channels: [], videos: [], segments: [] };
 
+// Vercel's deployed filesystem is read-only (writes only survive in /tmp, which
+// isn't shared across invocations), so when Upstash credentials are present we
+// store the whole DB as a single Redis key instead of a local file. Local dev
+// keeps using the file — nothing else in the app needs to know which mode is active.
+const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
+const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+const UPSTASH_KEY = "churchwebsite:db";
+
 function ensureDBFile() {
   const dir = path.dirname(DB_PATH);
   if (!fsSync.existsSync(dir)) fsSync.mkdirSync(dir, { recursive: true });
@@ -44,13 +52,37 @@ function ensureDBFile() {
   }
 }
 
+async function upstashCommand<T>(command: unknown[]): Promise<T> {
+  const res = await fetch(UPSTASH_URL!, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${UPSTASH_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(command),
+  });
+  if (!res.ok) {
+    throw new Error(`Upstash request failed: ${res.status} ${await res.text()}`);
+  }
+  const { result } = await res.json();
+  return result as T;
+}
+
 export async function readDB(): Promise<DB> {
+  if (UPSTASH_URL && UPSTASH_TOKEN) {
+    const raw = await upstashCommand<string | null>(["GET", UPSTASH_KEY]);
+    return raw ? (JSON.parse(raw) as DB) : EMPTY_DB;
+  }
   ensureDBFile();
   const raw = await fs.readFile(DB_PATH, "utf-8");
   return JSON.parse(raw) as DB;
 }
 
 async function writeDB(db: DB): Promise<void> {
+  if (UPSTASH_URL && UPSTASH_TOKEN) {
+    await upstashCommand(["SET", UPSTASH_KEY, JSON.stringify(db)]);
+    return;
+  }
   ensureDBFile();
   await fs.writeFile(DB_PATH, JSON.stringify(db, null, 2), "utf-8");
 }

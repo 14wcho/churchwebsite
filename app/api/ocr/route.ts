@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { createWorker } from "tesseract.js";
 import { CHORD_LIKE_PATTERN } from "@/lib/chord";
 
+// OCR can take longer than the default serverless timeout, especially on cold starts.
+export const maxDuration = 60;
+
 export async function POST(req: NextRequest) {
   const formData = await req.formData();
   const file = formData.get("image");
