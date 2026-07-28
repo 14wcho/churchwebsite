@@ -47,3 +47,6 @@ next-env.d.ts
 
 # tesseract downloaded language data
 *.traineddata
+
+.vercel
+.env*

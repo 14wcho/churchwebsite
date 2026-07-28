@@ -15,6 +15,12 @@ export function middleware(req: NextRequest) {
   const isLoginApi = pathname === "/api/admin-login";
   if (isLoginPage || isLoginApi) return NextResponse.next();
 
+  // The search page reads GET /api/segments to list everything — that's the
+  // one API every visitor needs, so it stays public. Only mutating it (POST)
+  // requires the admin cookie.
+  const isPublicSegmentsRead = pathname === "/api/segments" && req.method === "GET";
+  if (isPublicSegmentsRead) return NextResponse.next();
+
   const isProtectedPage = pathname.startsWith(PROTECTED_PAGE_PREFIX);
   const isProtectedApi = PROTECTED_API_PREFIXES.some((p) => pathname.startsWith(p));
   if (!isProtectedPage && !isProtectedApi) return NextResponse.next();
