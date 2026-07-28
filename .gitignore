@@ -39,3 +39,11 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# personal data (each clone starts fresh)
+/data/db.json
+/local-videos/*
+!/local-videos/.gitkeep
+
+# tesseract downloaded language data
+*.traineddata
