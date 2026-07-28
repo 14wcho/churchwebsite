@@ -19,7 +19,14 @@ export function mimeTypeFor(filename: string): string {
 }
 
 export async function listVideoFiles(): Promise<string[]> {
-  await fs.mkdir(LOCAL_VIDEOS_DIR, { recursive: true });
+  // On a hosted deployment (e.g. Vercel) the filesystem is read-only and this
+  // directory doesn't exist — local video is a local-machine-only feature, so
+  // just report an empty list there instead of throwing.
+  try {
+    await fs.mkdir(LOCAL_VIDEOS_DIR, { recursive: true });
+  } catch {
+    return [];
+  }
   const entries = await fs.readdir(LOCAL_VIDEOS_DIR, { withFileTypes: true });
   return entries
     .filter((e) => e.isFile() && VIDEO_EXTENSIONS.includes(path.extname(e.name).toLowerCase()))
