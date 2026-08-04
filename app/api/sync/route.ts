@@ -23,9 +23,11 @@ export async function POST(req: NextRequest) {
   }
 
   let handle = DEFAULT_HANDLE;
+  let label: string | undefined;
   try {
     const body = await req.json();
     if (body?.handle) handle = body.handle;
+    if (body?.label) label = body.label;
   } catch {
     // No JSON body sent — use the default channel.
   }
@@ -43,12 +45,14 @@ export async function POST(req: NextRequest) {
     if (existingChannel) {
       existingChannel.name = channel.title;
       existingChannel.uploadsPlaylistId = channel.uploadsPlaylistId;
+      if (label) existingChannel.label = label;
     } else {
       db.channels.push({
         id: channel.id,
         handle,
         name: channel.title,
         uploadsPlaylistId: channel.uploadsPlaylistId,
+        label,
       });
     }
 

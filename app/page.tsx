@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Fuse from "fuse.js";
 import Link from "next/link";
-import type { Segment, VideoRecord } from "@/lib/db";
+import type { Channel, Segment, VideoRecord } from "@/lib/db";
 import { secondsToTimestamp } from "@/lib/youtube";
 
 interface SearchItem {
@@ -15,6 +15,8 @@ const PAGE_SIZE = 50;
 
 export default function Home() {
   const [items, setItems] = useState<SearchItem[]>([]);
+  const [channels, setChannels] = useState<Channel[]>([]);
+  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [playingSegmentId, setPlayingSegmentId] = useState<string | null>(null);
@@ -34,13 +36,18 @@ export default function Home() {
         })
         .filter((x): x is SearchItem => x !== null);
       setItems(combined);
+      setChannels((data.channels as Channel[]) ?? []);
       setLoading(false);
     })();
   }, []);
 
+  const scopedItems = selectedChannelId
+    ? items.filter((i) => i.video.channelId === selectedChannelId)
+    : items;
+
   const fuse = useMemo(
     () =>
-      new Fuse(items, {
+      new Fuse(scopedItems, {
         keys: [
           { name: "segment.label", weight: 2 },
           { name: "video.title", weight: 1 },
@@ -48,19 +55,19 @@ export default function Home() {
         threshold: 0.35,
         ignoreLocation: true,
       }),
-    [items]
+    [scopedItems]
   );
 
   const results = query.trim()
     ? fuse.search(query.trim()).map((r) => r.item)
-    : items
+    : scopedItems
         .slice()
         .sort((a, b) => (a.video.publishedAt ?? "").localeCompare(b.video.publishedAt ?? ""))
         .reverse();
 
   useEffect(() => {
     setPage(1);
-  }, [query]);
+  }, [query, selectedChannelId]);
 
   const totalPages = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
   const pagedResults = results.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -78,6 +85,30 @@ export default function Home() {
           </Link>
         </div>
       </div>
+
+      {channels.length > 1 && (
+        <div className="mb-4 flex flex-wrap gap-2 text-sm">
+          <button
+            onClick={() => setSelectedChannelId(null)}
+            className={`rounded-full px-3 py-1 ${
+              selectedChannelId === null ? "bg-black text-white" : "bg-zinc-100 text-zinc-600"
+            }`}
+          >
+            전체
+          </button>
+          {channels.map((c) => (
+            <button
+              key={c.id}
+              onClick={() => setSelectedChannelId(c.id)}
+              className={`rounded-full px-3 py-1 ${
+                selectedChannelId === c.id ? "bg-black text-white" : "bg-zinc-100 text-zinc-600"
+              }`}
+            >
+              {c.label ?? c.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       <input
         autoFocus

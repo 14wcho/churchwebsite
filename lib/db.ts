@@ -9,6 +9,7 @@ export interface Channel {
   handle: string;
   name: string;
   uploadsPlaylistId: string;
+  label?: string; // custom tab name shown on the search page; falls back to `name`
 }
 
 export interface VideoRecord {

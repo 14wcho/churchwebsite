@@ -5,7 +5,7 @@ import { fetchOEmbedInfo, fetchVideoSnippets, parseYouTubeUrl, timestampToSecond
 
 export async function GET() {
   const db = await readDB();
-  return NextResponse.json({ segments: db.segments, videos: db.videos });
+  return NextResponse.json({ segments: db.segments, videos: db.videos, channels: db.channels });
 }
 
 export async function POST(req: NextRequest) {
