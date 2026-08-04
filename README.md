@@ -47,14 +47,25 @@ npm run dev
 
 배포본에서는 "로컬 영상" 기능이 원래 의미대로 동작하지 않음 (클라우드 서버에는 이 컴퓨터의 영상 파일이 없어서) — 이건 로컬 실행 전용 기능으로 남겨둠.
 
-## 기능별 상태 (4단계 모두 구현+테스트 완료)
+**실제 배포된 사이트: https://njonnuripraiseteam.vercel.app** (Vercel 프로젝트: `14wchos-projects/njonnuripraiseteam`, Upstash DB: `churchwebsite` / `topical-tadpole-184318`)
+
+## 기능별 상태
 
 | 단계 | 내용 | 상태 |
 |---|---|---|
-| 1 | 수동 구간 추가/검색 (fuse.js 퍼지 검색) | 완료, 테스트됨 |
-| 2 | 유튜브 채널 자동 동기화 (설명란 타임스탬프 파싱) | 완료, 테스트됨 (@TVHolyimpact 채널 388개 영상 / 1032개 구간 정상 수집 확인) |
-| 3 | 로컬 영상 폴더 스캔 + 재생 (`local-videos/`) | 완료, 테스트됨 |
-| 4 | 악보 OCR + 코드 transpose (`/transpose`) | 완료, 테스트됨 |
+| 1 | 수동 구간 추가/검색 (fuse.js 퍼지 검색, 50개씩 페이지네이션) | 완료, 배포본에서 테스트됨 |
+| 2 | 유튜브 채널 자동 동기화 (설명란 타임스탬프 파싱) | 완료, 배포본에서 테스트됨 (388개 영상 / 1032개 구간 정상 수집) |
+| 3 | 로컬 영상 폴더 스캔 + 재생 (`local-videos/`) | 완료, 로컬에서만 테스트됨 (배포본은 원래 no-op) |
+| 4 | 악보 OCR + 코드 transpose (`/transpose`) | **로컬은 테스트 완료, 배포본은 미해결 버그 있음 — 아래 참고** |
+
+### 미해결: 배포본에서 `/api/ocr`이 타임아웃남
+
+`maxDuration = 60`을 걸어놨는데도 `FUNCTION_INVOCATION_TIMEOUT`으로 504가 남 (실제로 `njonnuripraiseteam.vercel.app`에 테스트 이미지로 직접 재현 확인함). 유력한 원인: `app/api/ocr/route.ts`에서 `createWorker("eng")`를 호출하면 tesseract.js가 매 콜드 스타트마다 core.wasm + eng.traineddata(~5MB)를 외부 CDN에서 새로 받아오는데, 그게 60초 안에 안 끝나는 것으로 보임.
+
+다음 세션에서 이어서 할 일:
+1. tesseract 언어 데이터를 CDN에서 매번 받지 말고 배포본에 미리 포함시키기 — `createWorker`에 `langPath`/`corePath` 옵션을 로컬(예: `public/tessdata/`) 경로로 지정. 로컬에 이미 `eng.traineddata`(5MB, gitignore됨)가 있으니 이걸 `public/tessdata/eng.traineddata`로 옮기고 커밋하면 됨.
+2. 고친 뒤 로컬(`npm run dev`)에서 먼저 확인 → `git push` → `npx vercel --prod` → `/transpose`에서 실제 이미지 업로드로 재확인
+3. 테스트 방법(로그인 세션 있는 브라우저에서): 콘솔에서 canvas로 이미지 만들어 `/api/ocr`에 직접 fetch — 이번 세션에서 쓴 방법 그대로 재사용 가능 (별도 이미지 파일 없이 테스트 가능)
 
 ## 알아두면 좋은 것 (다시 손댈 때 참고)
 
