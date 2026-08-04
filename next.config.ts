@@ -5,12 +5,18 @@ const nextConfig: NextConfig = {
   // relative to node_modules; letting Turbopack bundle it breaks that resolution and
   // the OCR request hangs forever. Force plain Node `require` instead.
   serverExternalPackages: ["tesseract.js"],
-  // The trace-based deploy bundler wouldn't otherwise notice tessdata/eng.traineddata
-  // since it's read via a runtime-computed path, not require()'d — without this the
-  // file is missing in production and tesseract.js falls back to fetching it from a
-  // CDN on every cold start, which is what caused OCR requests to time out.
+  // Vercel's deploy bundler traces which files each route needs and prunes the rest.
+  // It can't see into tesseract.js's dynamically-spawned worker_thread script, so it
+  // was pruning files that worker requires relative to itself — the worker then died
+  // on `Cannot find module '..'` the moment it started, eating the full 60s timeout.
+  // Force the whole package trees (plus tessdata/eng.traineddata, which is read via a
+  // runtime-computed path and so isn't picked up by require()-based tracing either).
   outputFileTracingIncludes: {
-    "/api/ocr": ["./tessdata/**/*"],
+    "/api/ocr": [
+      "./tessdata/**/*",
+      "./node_modules/tesseract.js/**/*",
+      "./node_modules/tesseract.js-core/**/*",
+    ],
   },
 };
 
