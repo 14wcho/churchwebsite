@@ -56,16 +56,16 @@ npm run dev
 | 1 | 수동 구간 추가/검색 (fuse.js 퍼지 검색, 50개씩 페이지네이션) | 완료, 배포본에서 테스트됨 |
 | 2 | 유튜브 채널 자동 동기화 (설명란 타임스탬프 파싱) | 완료, 배포본에서 테스트됨 (388개 영상 / 1032개 구간 정상 수집) |
 | 3 | 로컬 영상 폴더 스캔 + 재생 (`local-videos/`) | 완료, 로컬에서만 테스트됨 (배포본은 원래 no-op) |
-| 4 | 악보 OCR + 코드 transpose (`/transpose`) | **로컬은 테스트 완료, 배포본은 미해결 버그 있음 — 아래 참고** |
+| 4 | 악보 OCR + 코드 transpose (`/transpose`) | 완료, 배포본에서 테스트됨 (200 OK, ~1.3초) |
 
-### 미해결: 배포본에서 `/api/ocr`이 타임아웃남
+### (해결됨) 배포본에서 `/api/ocr`이 타임아웃났던 문제
 
-`maxDuration = 60`을 걸어놨는데도 `FUNCTION_INVOCATION_TIMEOUT`으로 504가 남 (실제로 `njonnuripraiseteam.vercel.app`에 테스트 이미지로 직접 재현 확인함). 유력한 원인: `app/api/ocr/route.ts`에서 `createWorker("eng")`를 호출하면 tesseract.js가 매 콜드 스타트마다 core.wasm + eng.traineddata(~5MB)를 외부 CDN에서 새로 받아오는데, 그게 60초 안에 안 끝나는 것으로 보임.
+원인이 세 겹이었음 — Vercel 배포 시 `@vercel/nft`가 각 라우트에 필요한 파일만 추적해서 나머지를 잘라내는데, tesseract.js는 `worker_threads`로 별도 스레드를 띄우고 그 안에서 상대경로로 `require`를 하기 때문에 정적 추적이 안 됨:
+1. `eng.traineddata`(5MB)가 번들에 없어서 매 콜드 스타트마다 CDN에서 새로 받으려다 시간 초과 → `tessdata/eng.traineddata`를 커밋하고 `createWorker`에 `langPath`로 직접 지정해서 해결
+2. tesseract.js 패키지 자체 파일 일부가 잘려나가서 워커가 뜨자마자 `Cannot find module '..'` → `next.config.ts`의 `outputFileTracingIncludes`로 `node_modules/tesseract.js/**`, `tesseract.js-core/**` 강제 포함
+3. tesseract.js의 하위 의존성(`bmp-js` 등)도 마찬가지로 잘려나감 → `package.json`의 `dependencies` 전체를 `outputFileTracingIncludes`에 명시
 
-다음 세션에서 이어서 할 일:
-1. tesseract 언어 데이터를 CDN에서 매번 받지 말고 배포본에 미리 포함시키기 — `createWorker`에 `langPath`/`corePath` 옵션을 로컬(예: `public/tessdata/`) 경로로 지정. 로컬에 이미 `eng.traineddata`(5MB, gitignore됨)가 있으니 이걸 `public/tessdata/eng.traineddata`로 옮기고 커밋하면 됨.
-2. 고친 뒤 로컬(`npm run dev`)에서 먼저 확인 → `git push` → `npx vercel --prod` → `/transpose`에서 실제 이미지 업로드로 재확인
-3. 테스트 방법(로그인 세션 있는 브라우저에서): 콘솔에서 canvas로 이미지 만들어 `/api/ocr`에 직접 fetch — 이번 세션에서 쓴 방법 그대로 재사용 가능 (별도 이미지 파일 없이 테스트 가능)
+세 번 배포하며 하나씩 잡아냄 (`npx vercel logs <deployment-url>`로 실제 런타임 에러 확인하는 게 핵심이었음 — 브라우저에는 그냥 타임아웃/500만 보이고 진짜 원인은 로그에만 있었음).
 
 ## 알아두면 좋은 것 (다시 손댈 때 참고)
 
