@@ -1,6 +1,9 @@
+import path from "path";
 import { NextRequest, NextResponse } from "next/server";
 import { createWorker } from "tesseract.js";
 import { CHORD_LIKE_PATTERN } from "@/lib/chord";
+
+const TESSDATA_DIR = path.join(process.cwd(), "tessdata");
 
 // OCR can take longer than the default serverless timeout, especially on cold starts.
 export const maxDuration = 60;
@@ -14,7 +17,14 @@ export async function POST(req: NextRequest) {
 
   const buffer = Buffer.from(await file.arrayBuffer());
 
-  const worker = await createWorker("eng");
+  // Without a local langPath, tesseract.js fetches eng.traineddata (~5MB) from a
+  // CDN on every cold start, which is what was blowing through the serverless
+  // timeout. We bundle the plain (non-gzipped) file ourselves instead.
+  const worker = await createWorker("eng", undefined, {
+    langPath: TESSDATA_DIR,
+    gzip: false,
+    cachePath: "/tmp",
+  });
   try {
     const { data } = await worker.recognize(buffer, {}, { blocks: true });
     const words: { text: string; x: number; y: number; width: number; height: number }[] = [];

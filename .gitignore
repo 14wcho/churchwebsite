@@ -45,8 +45,10 @@ next-env.d.ts
 /local-videos/*
 !/local-videos/.gitkeep
 
-# tesseract downloaded language data
+# tesseract language data — bundled at tessdata/ on purpose (see next.config.ts),
+# but still ignore any stray copies downloaded elsewhere
 *.traineddata
+!/tessdata/eng.traineddata
 
 .vercel
 .env*
