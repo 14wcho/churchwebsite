@@ -16,6 +16,17 @@ const nextConfig: NextConfig = {
       "./tessdata/**/*",
       "./node_modules/tesseract.js/**/*",
       "./node_modules/tesseract.js-core/**/*",
+      // tesseract.js's own dependencies, required from inside its worker_thread
+      // script — the tracer doesn't follow those requires (see commit history
+      // for the two rounds of MODULE_NOT_FOUND this took to find), so every one
+      // of its package.json `dependencies` has to be listed explicitly here.
+      "./node_modules/bmp-js/**/*",
+      "./node_modules/idb-keyval/**/*",
+      "./node_modules/is-url/**/*",
+      "./node_modules/node-fetch/**/*",
+      "./node_modules/regenerator-runtime/**/*",
+      "./node_modules/wasm-feature-detect/**/*",
+      "./node_modules/zlibjs/**/*",
     ],
   },
 };
