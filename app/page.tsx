@@ -140,7 +140,9 @@ export default function Home() {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm text-zinc-500">{video.title}</p>
                 <p className="font-medium">
-                  {segment.approx ? segment.label : `${secondsToTimestamp(segment.timestampSec)} · ${segment.label}`}
+                  {segment.approx
+                    ? `(수요예배) · ${segment.label}`
+                    : `${secondsToTimestamp(segment.timestampSec)} · ${segment.label}`}
                 </p>
               </div>
             );

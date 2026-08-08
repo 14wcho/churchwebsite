@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { Channel, Segment, VideoRecord } from "@/lib/db";
 import { secondsToTimestamp } from "@/lib/youtube";
 
 const PAGE_SIZE = 50;
 
 export default function AdminPage() {
+  const router = useRouter();
   const [segments, setSegments] = useState<Segment[]>([]);
   const [videos, setVideos] = useState<VideoRecord[]>([]);
   const [channels, setChannels] = useState<Channel[]>([]);
@@ -128,6 +130,12 @@ export default function AdminPage() {
     }
   }
 
+  async function handleLogout() {
+    await fetch("/api/admin-logout", { method: "POST" });
+    router.push("/");
+    router.refresh();
+  }
+
   async function handleSaveVideoTitle() {
     if (!editingVideoTitle) return;
     await fetch(`/api/videos/${editingVideoTitle.id}`, {
@@ -151,9 +159,14 @@ export default function AdminPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
-      <Link href="/" className="mb-4 inline-block text-sm text-zinc-500 hover:underline">
-        ← 검색으로
-      </Link>
+      <div className="mb-4 flex items-center justify-between">
+        <Link href="/" className="text-sm text-zinc-500 hover:underline">
+          ← 검색으로
+        </Link>
+        <button onClick={handleLogout} className="text-sm text-zinc-500 hover:underline">
+          로그아웃
+        </button>
+      </div>
       <h1 className="text-2xl font-semibold mb-6">관리자 - 찬양 구간 관리</h1>
 
       <div className="mb-10 space-y-3 rounded-lg border border-zinc-200 p-4">

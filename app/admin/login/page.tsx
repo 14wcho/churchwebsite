@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
 export default function AdminLoginPage() {
@@ -43,6 +44,9 @@ function AdminLoginForm() {
 
   return (
     <main className="mx-auto max-w-sm px-6 py-20">
+      <Link href="/" className="mb-4 inline-block text-sm text-zinc-500 hover:underline">
+        ← 검색으로
+      </Link>
       <h1 className="mb-6 text-xl font-semibold">관리자 로그인</h1>
       <form onSubmit={handleSubmit} className="space-y-3">
         <input
