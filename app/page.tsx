@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Fuse from "fuse.js";
 import Link from "next/link";
 import type { Channel, Segment, VideoRecord } from "@/lib/db";
-import { secondsToTimestamp } from "@/lib/youtube";
+import { guessServiceLabel, secondsToTimestamp } from "@/lib/youtube";
 
 interface SearchItem {
   segment: Segment;
@@ -13,10 +13,18 @@ interface SearchItem {
 
 const PAGE_SIZE = 50;
 
+// Cross-cutting tabs on top of the per-channel ones — a video can show up under
+// both its channel tab and one of these, matched by a day-of-week keyword in the
+// title (e.g. "...| 수요성령집회 | ..."). Not a separate channel, just a filter.
+const DAY_TABS: { key: string; label: string; test: RegExp }[] = [
+  { key: "day:수요", label: "수요예배", test: /수요/ },
+  { key: "day:토요", label: "토요예배", test: /토요/ },
+];
+
 export default function Home() {
   const [items, setItems] = useState<SearchItem[]>([]);
   const [channels, setChannels] = useState<Channel[]>([]);
-  const [selectedChannelId, setSelectedChannelId] = useState<string | null>(null);
+  const [selectedFilter, setSelectedFilter] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [playingSegmentId, setPlayingSegmentId] = useState<string | null>(null);
@@ -41,9 +49,12 @@ export default function Home() {
     })();
   }, []);
 
-  const scopedItems = selectedChannelId
-    ? items.filter((i) => i.video.channelId === selectedChannelId)
-    : items;
+  const dayTab = DAY_TABS.find((t) => t.key === selectedFilter);
+  const scopedItems = dayTab
+    ? items.filter((i) => dayTab.test.test(i.video.title))
+    : selectedFilter
+      ? items.filter((i) => i.video.channelId === selectedFilter)
+      : items;
 
   const fuse = useMemo(
     () =>
@@ -67,7 +78,7 @@ export default function Home() {
 
   useEffect(() => {
     setPage(1);
-  }, [query, selectedChannelId]);
+  }, [query, selectedFilter]);
 
   const totalPages = Math.max(1, Math.ceil(results.length / PAGE_SIZE));
   const pagedResults = results.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -89,9 +100,9 @@ export default function Home() {
       {channels.length > 1 && (
         <div className="mb-4 flex flex-wrap gap-2 text-sm">
           <button
-            onClick={() => setSelectedChannelId(null)}
+            onClick={() => setSelectedFilter(null)}
             className={`rounded-full px-3 py-1 ${
-              selectedChannelId === null ? "bg-black text-white" : "bg-zinc-100 text-zinc-600"
+              selectedFilter === null ? "bg-black text-white" : "bg-zinc-100 text-zinc-600"
             }`}
           >
             전체
@@ -99,12 +110,23 @@ export default function Home() {
           {channels.map((c) => (
             <button
               key={c.id}
-              onClick={() => setSelectedChannelId(c.id)}
+              onClick={() => setSelectedFilter(c.id)}
               className={`rounded-full px-3 py-1 ${
-                selectedChannelId === c.id ? "bg-black text-white" : "bg-zinc-100 text-zinc-600"
+                selectedFilter === c.id ? "bg-black text-white" : "bg-zinc-100 text-zinc-600"
               }`}
             >
               {c.label ?? c.name}
+            </button>
+          ))}
+          {DAY_TABS.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setSelectedFilter(t.key)}
+              className={`rounded-full px-3 py-1 ${
+                selectedFilter === t.key ? "bg-black text-white" : "bg-zinc-100 text-zinc-600"
+              }`}
+            >
+              {t.label}
             </button>
           ))}
         </div>
@@ -141,7 +163,7 @@ export default function Home() {
                 <p className="truncate text-sm text-zinc-500">{video.title}</p>
                 <p className="font-medium">
                   {segment.approx
-                    ? `(수요예배) · ${segment.label}`
+                    ? `${guessServiceLabel(video.title)} · ${segment.label}`
                     : `${secondsToTimestamp(segment.timestampSec)} · ${segment.label}`}
                 </p>
               </div>

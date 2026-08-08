@@ -134,6 +134,26 @@ export function parseUntimedSongList(description: string): string[] {
   return songs;
 }
 
+/**
+ * Guesses a friendly "(수요예배)" style label for approximate segments (see
+ * parseUntimedSongList below) from the video title, e.g. "...| 수요성령집회 | ..."
+ * or "...| 토요주일예배 | ..." — day-of-week keyword wins over generic "주일"
+ * since some titles (like the Saturday one) contain both.
+ */
+export function guessServiceLabel(title: string): string {
+  const DAY_LABELS: [RegExp, string][] = [
+    [/수요/, "(수요예배)"],
+    [/토요/, "(토요예배)"],
+    [/금요/, "(금요예배)"],
+    [/새벽/, "(새벽예배)"],
+    [/주일|일요/, "(주일예배)"],
+  ];
+  for (const [re, label] of DAY_LABELS) {
+    if (re.test(title)) return label;
+  }
+  return "(타임스탬프 없음)";
+}
+
 const API_BASE = "https://www.googleapis.com/youtube/v3";
 
 function requireApiKey(): string {
