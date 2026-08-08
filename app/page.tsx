@@ -140,8 +140,7 @@ export default function Home() {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm text-zinc-500">{video.title}</p>
                 <p className="font-medium">
-                  {segment.approx ? "정확한 시간 모름" : secondsToTimestamp(segment.timestampSec)} ·{" "}
-                  {segment.label}
+                  {segment.approx ? segment.label : `${secondsToTimestamp(segment.timestampSec)} · ${segment.label}`}
                 </p>
               </div>
             );
