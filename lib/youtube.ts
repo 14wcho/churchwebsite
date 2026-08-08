@@ -99,6 +99,41 @@ export function parseDescriptionSegments(description: string): ParsedDescription
   return results;
 }
 
+/**
+ * Some videos (e.g. Wednesday livestreams) never got per-song timestamps — the
+ * description just lists songs as bullets under a "찬양: <leader name>" line, with
+ * no way to know which second each one starts at:
+ *
+ *   찬양: 양신영
+ *
+ *   * 풀은 마르고 by 김영진
+ *   * 오직 예수 by Jonathan Douglass, Joel Houston
+ *
+ * Pulls those titles out so they're still searchable, just without a real timestamp
+ * (the caller falls back to the start of the video).
+ */
+export function parseUntimedSongList(description: string): string[] {
+  const lines = description.split(/\r?\n/);
+  const leaderIdx = lines.findIndex((l) => /^\s*찬양\s*[:：]/.test(l));
+  if (leaderIdx === -1) return [];
+
+  const songs: string[] = [];
+  let started = false;
+  for (let i = leaderIdx + 1; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    const bulletMatch = trimmed.match(/^[*•-]\s+(.+)$/);
+    if (bulletMatch) {
+      started = true;
+      songs.push(bulletMatch[1].trim());
+    } else if (trimmed === "") {
+      if (started) break;
+    } else {
+      break;
+    }
+  }
+  return songs;
+}
+
 const API_BASE = "https://www.googleapis.com/youtube/v3";
 
 function requireApiKey(): string {

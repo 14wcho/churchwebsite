@@ -27,6 +27,7 @@ export interface Segment {
   videoId: string;
   timestampSec: number;
   label: string;
+  approx?: boolean; // true when timestampSec is a guess (0) — no real timestamp was in the description
 }
 
 export interface DB {

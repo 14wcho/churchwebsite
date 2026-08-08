@@ -6,6 +6,7 @@ import {
   fetchChannelByHandle,
   fetchVideoSnippets,
   parseDescriptionSegments,
+  parseUntimedSongList,
 } from "@/lib/youtube";
 
 const DEFAULT_HANDLE = "@TVHolyimpact";
@@ -77,7 +78,8 @@ export async function POST(req: NextRequest) {
 
       // Dedupe on (videoId, timestampSec) so re-running sync doesn't duplicate rows or
       // clobber a label the admin has since corrected.
-      for (const seg of parseDescriptionSegments(snippet.description)) {
+      const timedSegments = parseDescriptionSegments(snippet.description);
+      for (const seg of timedSegments) {
         const exists = db.segments.some(
           (s) => s.videoId === snippet.id && s.timestampSec === seg.timestampSec
         );
@@ -89,6 +91,27 @@ export async function POST(req: NextRequest) {
             label: seg.label,
           });
           newSegments++;
+        }
+      }
+
+      // Some videos (e.g. Wednesday livestreams) never got per-song timestamps —
+      // only fall back to the untimed "찬양: <leader>" bullet list when nothing
+      // timestamped was found, and dedupe by label since they all share timestampSec 0.
+      if (timedSegments.length === 0) {
+        for (const songLabel of parseUntimedSongList(snippet.description)) {
+          const exists = db.segments.some(
+            (s) => s.videoId === snippet.id && s.approx && s.label === songLabel
+          );
+          if (!exists) {
+            db.segments.push({
+              id: uuidv4(),
+              videoId: snippet.id,
+              timestampSec: 0,
+              label: songLabel,
+              approx: true,
+            });
+            newSegments++;
+          }
         }
       }
     }
